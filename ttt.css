@@ -1,0 +1,19 @@
+canvas
+{
+    height:600px;
+    width:600px;
+    padding:0;
+    margin: auto;
+    display: block;
+    background-color: #F5F5F5;
+    -moz-box-shadow: 5px 5px 10px 3px #888;
+    -webkit-box-shadow: 5px 5px 10px 3px #888;
+}
+footer
+{
+    font-family: Georgia, serif;
+    color: #AAAAAA;
+    font-size:.8em;
+    text-align:center;
+    padding-top: 1em;
+}
