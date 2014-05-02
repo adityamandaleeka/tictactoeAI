@@ -17,6 +17,17 @@ var AI_COLOR    = '#267979';
 var HUMAN_COLOR = '#CA7E3F';
 var GRID_COLOR  = '#003366';
 
+// Mark types
+var AI_SYMBOL = 'O';
+var HUMAN_SYMBOL = 'X';
+
+// Some constant to use for evaluated board value when game is not over
+var GAME_NOT_OVER = -100;
+
+
+/**
+ * Draw the initial grid for the game
+ */
 function drawGrid()
 {
     var grid = document.getElementById("grid");
@@ -42,6 +53,10 @@ function drawGrid()
     context.closePath();
 }
 
+/**
+ * Handle clicks
+ * @param e - The click event
+ */
 function clickHandler(e)
 {
     var grid = document.getElementById("grid");
@@ -52,86 +67,97 @@ function clickHandler(e)
     var row = Math.floor(yPos/(grid.height/3));
     var col = Math.floor(xPos/(grid.width/3));
 
-    // position of this square in the boardState array
+    // Position of this square in the boardState array
     var arrayPosOfSquare = 3 * row + col; 
-    if(boardState[arrayPosOfSquare] == 0)
+
+    // Clicking in a populated square does nothing
+    if(boardState[arrayPosOfSquare] !== 0)
+        return;
+
+    mark(HUMAN_SYMBOL, arrayPosOfSquare);
+    boardState[arrayPosOfSquare] = 1;
+
+    var evaluatedValue = evaluateGameBoard(boardState);
+    if(evaluatedValue !== GAME_NOT_OVER)
     {
-        mark(1, arrayPosOfSquare);
-        boardState[arrayPosOfSquare] = 1;
-        if(checkGameOver(boardState))
-        {
-            createAlertMessage(boardState);
-        }
-        else
-        {
-            makeAImove();
-        }
+        createAlertMessage(evaluatedValue);
+    }
+    else
+    {
+        makeAImove();
     }
 }
 
-// Check if the game is over
-function checkGameOver(board)
-{
-    return (evaluateGameBoard(board) != -100);
-}
-
+/**
+ * Evaluate the board
+ * @param board - The current state of the board
+ * @returns {Number} The value of the board
+ */
 function evaluateGameBoard(board)
 {
-    // Sum the rows/columns/diagonals and check if there is a +3,
-    // indicating the human has won.
-    if (board[0] + board[1] + board[2] == 3 ||
-        board[3] + board[4] + board[5] == 3 ||
-        board[6] + board[7] + board[8] == 3 ||
-        board[0] + board[3] + board[6] == 3 ||
-        board[1] + board[4] + board[7] == 3 ||
-        board[2] + board[5] + board[8] == 3 ||
-        board[0] + board[4] + board[8] == 3 ||
-        board[2] + board[4] + board[6] == 3)
-       return 1;
 
-    // Sum the rows/columns/diagonals and check if there is a -3,
-    // indicating the AI has won.
-    if (board[0] + board[1] + board[2] == -3 ||
-        board[3] + board[4] + board[5] == -3 ||
-        board[6] + board[7] + board[8] == -3 ||
-        board[0] + board[3] + board[6] == -3 ||
-        board[1] + board[4] + board[7] == -3 ||
-        board[2] + board[5] + board[8] == -3 ||
-        board[0] + board[4] + board[8] == -3 ||
-        board[2] + board[4] + board[6] == -3)
-       return -1;
+    var sums = getRowColDiagonalTotals(board);
 
-    for(var i = 0; i<9; i++)
-    {
-        if(board[i] == 0)
-        {
-            return -100; // Game isn't over yet
-        }
-    }
+    // If any of the rows/columns/diagonals add up to 3, the human has won
+    if(sums.indexOf(3) !== -1)
+        return 1;
+
+    // If any of the rows/columns/diagonals add up to -3, the AI has won
+    if(sums.indexOf(-3) !== -1)
+        return -1;
+
+    // Game is not over if there are empty squares
+    if(board.indexOf(0) !== -1)
+        return GAME_NOT_OVER;
 
     return 0; // Draw
 }
 
+/**
+ * Returns the totals of the rows, columns, and diagonals of the board
+ * @param board - The current state of the board
+ * @returns Totals of the rows, columns, and diagonals
+ */
+function getRowColDiagonalTotals(board)
+{
+    return [
+        board[0] + board[1] + board[2],
+        board[3] + board[4] + board[5],
+        board[6] + board[7] + board[8],
+        board[0] + board[3] + board[6],
+        board[1] + board[4] + board[7],
+        board[2] + board[5] + board[8],
+        board[0] + board[4] + board[8],
+        board[2] + board[4] + board[6]
+        ];
+}
+
+/**
+ * Perform alpha-beta pruning search to find the best AI move to make.
+ * @param board - The current state of the board
+ * @returns {Number} The square to play in order to minimize the score
+ */
 function alphaBetaPruningSearch(board)
 {
-    if(checkGameOver(board))
-       return evaluateGameBoard(board);
+    var evaluatedValue = evaluateGameBoard(board);
+    if(evaluatedValue !== GAME_NOT_OVER)
+        return evaluatedValue;
 
-    var score = 9999;
+    var score = Number.MAX_VALUE;
     var desiredIndex;
     var alpha = -99999;
     var beta = 99999;
-    var currMax;
+    var currMin;
     for(var i = 0; i < 9; i++)
     {
         var nextBoardState = board.slice(0);
-        if(nextBoardState[i] == 0)
+        if(nextBoardState[i] === 0)
         {
             nextBoardState[i] = -1;
-            currMax = getValue(true, nextBoardState, alpha, beta);
-            if(currMax < score)
+            currMin = getValue(true, nextBoardState, alpha, beta);
+            if(currMin < score)
             {
-                score = currMax;
+                score = currMin;
                 desiredIndex = i;
             }
             
@@ -145,38 +171,48 @@ function alphaBetaPruningSearch(board)
     return desiredIndex;
 }
 
-// maxOrMin is a boolean - true for max, false for min
+/**
+ * Gets the value of the game tree in the given state.
+ * @param maxOrMin - A boolean value representing whom the next turn belongs to (max if true and min if false)
+ * @param board - The current state of the board
+ * @param alpha - The current value of alpha in the AB-pruning algorithm
+ * @param beta - The current value of beta in the AB-pruning algorithm
+ * @returns {Number} The value of this game subtree
+ */
 function getValue(maxOrMin, board, alpha, beta)
 {
-    if(checkGameOver(board))
-        return evaluateGameBoard(board);
+    var evaluatedValue = evaluateGameBoard(board);
+    if(evaluatedValue !== GAME_NOT_OVER)
+        return evaluatedValue;
     
-    var val = maxOrMin ? -9999 : 9999;
-    var myAlpha = alpha;
-    var myBeta = beta;
+    // If maximizing, start with value set to MIN_VALUE and vice versa
+    var val = maxOrMin ?  Number.MIN_VALUE : Number.MAX_VALUE;
 
     for(var i = 0; i < 9; i++)
     {
         var nextBoardState = board.slice(0);
-        if(nextBoardState[i] == 0)
+
+        if(nextBoardState[i] === 0) // Skip filled squares
         {
-            nextBoardState[i] = maxOrMin ? 1 : -1; //human is max
+            nextBoardState[i] = maxOrMin ? 1 : -1; // human is max
 
-            if(maxOrMin) // get max value
+            if(maxOrMin)
             {
-                val = Math.max(val, getValue(false, nextBoardState, myAlpha, myBeta));
-                if(val >= myBeta)
+                // get max value
+                val = Math.max(val, getValue(false, nextBoardState, alpha, beta));
+                if(val >= beta)
                     return val;
 
-                myAlpha = Math.max(myAlpha, val);
+                alpha = Math.max(alpha, val);
             }
-            else // get min value
+            else
             {
-                val = Math.min(val, getValue(true, nextBoardState, myAlpha, myBeta));
-                if(val <= myAlpha)
+                // get min value
+                val = Math.min(val, getValue(true, nextBoardState, alpha, beta));
+                if(val <= alpha)
                     return val;
 
-                myBeta = Math.min(myBeta, val);
+                beta = Math.min(beta, val);
             }
         }
     }
@@ -184,16 +220,26 @@ function getValue(maxOrMin, board, alpha, beta)
     return val;
 }
 
+/**
+ * Finds the best move for the AI to make and makes it.
+ */
 function makeAImove()
 {
     var bestMove = alphaBetaPruningSearch(boardState);
     boardState[bestMove] = -1;
-    mark(0, bestMove);
+    mark(AI_SYMBOL, bestMove);
 
-    if(checkGameOver(boardState))
-       createAlertMessage(boardState);
+    var evaluatedValue = evaluateGameBoard(boardState);
+    if(evaluatedValue !== GAME_NOT_OVER)
+       createAlertMessage(evaluatedValue);
 }
 
+/**
+ * Draws a mark of the given type in the specified square
+ * @param type - The type of mark to draw (X or O)
+ * @param squareNum - The index of the square in which to draw
+ * @throws Will throw if the mark type is not recognized.
+ */
 function mark(type, squareNum)
 {
     var grid = document.getElementById("grid");
@@ -202,7 +248,7 @@ function mark(type, squareNum)
     context.beginPath();
     context.lineWidth = 7;
 
-    if(type == 0) // draw circle
+    if(type === AI_SYMBOL) // draw circle
     {
         var centerX = (squareNum % 3) * (grid.width / 3) + (grid.width / 6);
         var centerY = Math.floor(squareNum / 3) * (grid.height / 3) + (grid.width / 6);
@@ -211,9 +257,8 @@ function mark(type, squareNum)
         context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
         context.strokeStyle = AI_COLOR; 
     }
-    else // draw X
+    else if(type === HUMAN_SYMBOL) // draw X
     {
-        var grid = document.getElementById("grid");
         var leftX = (squareNum % 3) * (grid.width / 3) + 5;
         var topY = Math.floor((squareNum / 3)) * (grid.height / 3) + 5;
         var rightX = leftX + (grid.width / 3) - 10;
@@ -227,23 +272,27 @@ function mark(type, squareNum)
         context.lineCap = "round";
         context.strokeStyle = HUMAN_COLOR; 
     }
+    else
+    {
+        throw "Invalid mark type";
+    }
 
     context.stroke();
     context.closePath(); 
 }
 
-function createAlertMessage(board)
+/**
+ * Shows an alert indicating the game's outcome and restarts the game
+ * @param boardValue - The value of the board
+ */
+function createAlertMessage(boardValue)
 {
-    if(checkGameOver(boardState))
-    {
-        var val = evaluateGameBoard(board);
-        if(val == 1)
-            alert('You Win!');
-        else if(val == -1)
-            alert('You Lose!');
-        else
-            alert('Draw');
+    if(boardValue === 1)
+        alert('You Win!');
+    else if(boardValue === -1)
+        alert('You Lose!');
+    else
+        alert('Draw');
 
-        drawGrid();
-    }
+    drawGrid();
 }
