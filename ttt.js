@@ -28,8 +28,7 @@ var GAME_NOT_OVER = -100;
 /**
  * Draw the initial grid for the game
  */
-function drawGrid()
-{
+function drawGrid() {
     var grid = document.getElementById("grid");
     var context = grid.getContext("2d");
 
@@ -57,8 +56,7 @@ function drawGrid()
  * Handle clicks
  * @param e - The click event
  */
-function clickHandler(e)
-{
+function clickHandler(e) {
     var grid = document.getElementById("grid");
     var yPos = e.clientY - grid.offsetTop;
     var xPos = e.clientX - grid.offsetLeft;
@@ -78,12 +76,10 @@ function clickHandler(e)
     boardState[arrayPosOfSquare] = 1;
 
     var evaluatedValue = evaluateGameBoard(boardState);
-    if(evaluatedValue !== GAME_NOT_OVER)
-    {
+    if(evaluatedValue !== GAME_NOT_OVER) {
         createAlertMessage(evaluatedValue);
     }
-    else
-    {
+    else {
         makeAImove();
     }
 }
@@ -93,9 +89,7 @@ function clickHandler(e)
  * @param board - The current state of the board
  * @returns {Number} The value of the board
  */
-function evaluateGameBoard(board)
-{
-
+function evaluateGameBoard(board) {
     var sums = getRowColDiagonalTotals(board);
 
     // If any of the rows/columns/diagonals add up to 3, the human has won
@@ -118,8 +112,7 @@ function evaluateGameBoard(board)
  * @param board - The current state of the board
  * @returns Totals of the rows, columns, and diagonals
  */
-function getRowColDiagonalTotals(board)
-{
+function getRowColDiagonalTotals(board) {
     return [
         board[0] + board[1] + board[2],
         board[3] + board[4] + board[5],
@@ -137,8 +130,7 @@ function getRowColDiagonalTotals(board)
  * @param board - The current state of the board
  * @returns {Number} The square to play in order to minimize the score
  */
-function alphaBetaPruningSearch(board)
-{
+function alphaBetaPruningSearch(board) {
     var evaluatedValue = evaluateGameBoard(board);
     if(evaluatedValue !== GAME_NOT_OVER)
         return evaluatedValue;
@@ -148,15 +140,12 @@ function alphaBetaPruningSearch(board)
     var alpha = -99999;
     var beta = 99999;
     var currMin;
-    for(var i = 0; i < 9; i++)
-    {
+    for(var i = 0; i < 9; i++) {
         var nextBoardState = board.slice(0);
-        if(nextBoardState[i] === 0)
-        {
+        if(nextBoardState[i] === 0) {
             nextBoardState[i] = -1;
             currMin = getValue(true, nextBoardState, alpha, beta);
-            if(currMin < score)
-            {
+            if(currMin < score) {
                 score = currMin;
                 desiredIndex = i;
             }
@@ -179,8 +168,7 @@ function alphaBetaPruningSearch(board)
  * @param beta - The current value of beta in the AB-pruning algorithm
  * @returns {Number} The value of this game subtree
  */
-function getValue(maxOrMin, board, alpha, beta)
-{
+function getValue(maxOrMin, board, alpha, beta) {
     var evaluatedValue = evaluateGameBoard(board);
     if(evaluatedValue !== GAME_NOT_OVER)
         return evaluatedValue;
@@ -188,16 +176,13 @@ function getValue(maxOrMin, board, alpha, beta)
     // If maximizing, start with value set to MIN_VALUE and vice versa
     var val = maxOrMin ?  Number.MIN_VALUE : Number.MAX_VALUE;
 
-    for(var i = 0; i < 9; i++)
-    {
+    for(var i = 0; i < 9; i++) {
         var nextBoardState = board.slice(0);
 
-        if(nextBoardState[i] === 0) // Skip filled squares
-        {
+        if(nextBoardState[i] === 0) {
             nextBoardState[i] = maxOrMin ? 1 : -1; // human is max
 
-            if(maxOrMin)
-            {
+            if(maxOrMin) {
                 // get max value
                 val = Math.max(val, getValue(false, nextBoardState, alpha, beta));
                 if(val >= beta)
@@ -205,8 +190,7 @@ function getValue(maxOrMin, board, alpha, beta)
 
                 alpha = Math.max(alpha, val);
             }
-            else
-            {
+            else {
                 // get min value
                 val = Math.min(val, getValue(true, nextBoardState, alpha, beta));
                 if(val <= alpha)
@@ -223,8 +207,7 @@ function getValue(maxOrMin, board, alpha, beta)
 /**
  * Finds the best move for the AI to make and makes it.
  */
-function makeAImove()
-{
+function makeAImove() {
     var bestMove = alphaBetaPruningSearch(boardState);
     boardState[bestMove] = -1;
     mark(AI_SYMBOL, bestMove);
@@ -240,16 +223,15 @@ function makeAImove()
  * @param squareNum - The index of the square in which to draw
  * @throws Will throw if the mark type is not recognized.
  */
-function mark(type, squareNum)
-{
+function mark(type, squareNum) {
     var grid = document.getElementById("grid");
 
     var context = grid.getContext("2d");
     context.beginPath();
     context.lineWidth = 7;
 
-    if(type === AI_SYMBOL) // draw circle
-    {
+    if(type === AI_SYMBOL) {
+        // draw circle
         var centerX = (squareNum % 3) * (grid.width / 3) + (grid.width / 6);
         var centerY = Math.floor(squareNum / 3) * (grid.height / 3) + (grid.width / 6);
         var radius = (grid.width / 6) - 5;
@@ -257,8 +239,8 @@ function mark(type, squareNum)
         context.arc(centerX, centerY, radius, 0, 2 * Math.PI, false);
         context.strokeStyle = AI_COLOR; 
     }
-    else if(type === HUMAN_SYMBOL) // draw X
-    {
+    else if(type === HUMAN_SYMBOL) {
+        // draw X
         var leftX = (squareNum % 3) * (grid.width / 3) + 5;
         var topY = Math.floor((squareNum / 3)) * (grid.height / 3) + 5;
         var rightX = leftX + (grid.width / 3) - 10;
@@ -272,8 +254,7 @@ function mark(type, squareNum)
         context.lineCap = "round";
         context.strokeStyle = HUMAN_COLOR; 
     }
-    else
-    {
+    else {
         throw "Invalid mark type";
     }
 
@@ -285,8 +266,7 @@ function mark(type, squareNum)
  * Shows an alert indicating the game's outcome and restarts the game
  * @param boardValue - The value of the board
  */
-function createAlertMessage(boardValue)
-{
+function createAlertMessage(boardValue) {
     if(boardValue === 1)
         alert('You Win!');
     else if(boardValue === -1)
